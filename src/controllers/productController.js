@@ -56,6 +56,21 @@ const guardarImagenBase64 = async (base64Str, originalName, id_categoria) => {
     }
 };
 
+const resolverImagen = async ({ imagen_url, emoji, imagen_base64, imagen_nombre, id_categoria }) => 
+    imagen_base64 && imagen_nombre
+    ? guardarImagenBase64(imagen_base64, imagen_nombre, id_categoria)
+    : imagen_url || emoji ||  '🌸';
+
+const valoresProducto = async (body) => [
+    body.nombre,
+    body.descripcion || null,
+    body.id_categoria,
+    body.tipo || 'estandar',
+    await resolverImagen(body),
+    body.precio,
+    body.stock ?? 0,
+    body.stock_minimo ?? 1
+];
 // Obtener todos los productos
 export const getProductos = async (req, res) => {
     try {
@@ -93,90 +108,62 @@ export const getProductos = async (req, res) => {
     }
 };
 
-// Crear nuevo producto
+//crear nuevo producto
 export const crearProducto = async (req, res) => {
-    const { nombre, descripcion, id_categoria, tipo, imagen_url, emoji, precio, stock, stock_minimo, imagen_base64, imagen_nombre } = req.body;
-
     try {
-        let finalImageUrl = imagen_url || emoji || '🌸';
-
-        if (imagen_base64 && imagen_nombre) {
-            finalImageUrl = await guardarImagenBase64(imagen_base64, imagen_nombre, id_categoria);
-        }
+        const valores = await valoresProducto(req.body);
 
         const { rows } = await pool.query(
-            `INSERT INTO producto (nombre, descripcion, id_categoria, tipo, imagen_url, precio, stock_disponible, stock_minimo, activo)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, TRUE)
-             RETURNING id_producto`,
-            [nombre, descripcion || null, id_categoria, tipo || 'Estándar', finalImageUrl, precio, stock || 0, stock_minimo || 1]
+            `INSERT INTO producto (nombre, descripcion, id_categoria, tipo, imagen_url, stock_disponible, stock_minimo, activo)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, TRUE)
+            RETURNING id_producto`,
+            valores
         );
 
-        res.json({
-            ok:      true,
+        res.json ({
+            ok: true,
             message: 'Producto creado exitosamente',
-            id:      rows[0].id_producto
+            id: rows[0].id_producto
         });
-    } catch (error) {
-        console.error('Error al crear producto:', error);
-        res.status(500).json({ error: 'Error al crear producto en el servidor' });
+    }catch (error) {
+        console.error('Error al crear producto: ', error);
+        res.status(500).json({ error: 'Error al crear producto en el servidor'});
     }
 };
 
-// Editar producto
-export const editarProducto = async (req, res) => {
-    const { id } = req.params;
-    const { nombre, descripcion, id_categoria, tipo, imagen_url, emoji, precio, stock, stock_minimo, imagen_base64, imagen_nombre } = req.body;
-
+//Editar Producto
+export const editarProducto = async (req,res) => {
     try {
-        let finalImageUrl = imagen_url || emoji || '🌸';
-
-        if (imagen_base64 && imagen_nombre) {
-            finalImageUrl = await guardarImagenBase64(imagen_base64, imagen_nombre, id_categoria);
-        }
+        const valores = await valoresProducto(req.body);
 
         await pool.query(
             `UPDATE producto
-             SET nombre = $1, descripcion = $2, id_categoria = $3, tipo = $4,
-                 imagen_url = $5, precio = $6, stock_disponible = $7, stock_minimo = $8
-             WHERE id_producto = $9`,
-            [nombre, descripcion || null, id_categoria, tipo || 'Estándar', finalImageUrl, precio, stock, stock_minimo, id]
+            SET nommbre = $1, descripcion = $2, id_categoria = $3, tipo = $4,
+            imagen_url = $5, precio = $6, stock_disponible = $7, stock_minimo = $8
+            WHERE id_producto = $9`,
+            [...valores, req.params.id]
         );
-
-        res.json({ ok: true, message: 'Producto actualizado exitosamente' });
-    } catch (error) {
-        console.error('Error al editar producto:', error);
+        res.json({ ok:true, message: 'Producto actualizado exitosamnete'});
+    }catch (error) {
+        console.error('Error al editar poducto: ', error);
         res.status(500).json({ error: 'Error al editar producto en el servidor' });
-    }
-};
+    };
+}
 
-// Eliminación lógica (soft delete)
-export const eliminarProducto = async (req, res) => {
-    const { id } = req.params;
-
-    try {
-        await pool.query(
-            'UPDATE producto SET activo = FALSE WHERE id_producto = $1',
-            [id]
-        );
-        res.json({ ok: true, message: 'Producto desactivado exitosamente' });
-    } catch (error) {
-        console.error('Error al desactivar producto:', error);
-        res.status(500).json({ error: 'Error al desactivar producto en el servidor' });
-    }
-};
-
-// Reactivar producto
-export const reactivarProducto = async (req, res) => {
-    const { id } = req.params;
+const setProductoActivo = (activo) => async (req, res) => {
+    const accion = activo ? 'reactivar': 'desactivar'; 
 
     try {
         await pool.query(
-            'UPDATE producto SET activo = TRUE WHERE id_producto = $1',
-            [id]
+        ' UPDATE producto SET activo= $1 WHERE id_producto = $2',
+        [activo, req.params.id]
         );
-        res.json({ ok: true, message: 'Producto reactivado exitosamente' });
-    } catch (error) {
-        console.error('Error al reactivar producto:', error);
-        res.status(500).json({ error: 'Error al reactivar producto en el servidor' });
+        res.json({ ok: true, message: `Productp ${activo ? 'reactivado' : 'desactivado'} exitosamente`})
+    }catch ( error) {
+        console.error(`Error al ${accion} producto: `, error);
+        res.status(500).json({ error: `Error al ${accion} producto en el servidor`});
     }
 };
+
+export const eliminarProducto = setProductoActivo(false);
+export const reactivarProduo = setProductoActivo(true);
