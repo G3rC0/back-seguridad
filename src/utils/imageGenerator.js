@@ -1,23 +1,12 @@
 import { pool } from '../config/db.js';
 import fs from 'fs';
 import path from 'path';
-
+import { cleanCategoryName, getFrontendPublicDir, ensureDir } from './files.js';
 // 1x1 transparent PNG
 const transparentPngBuffer = Buffer.from(
     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=",
     "base64"
 );
-
-const cleanCategoryName = (nombre) => {
-    if (!nombre) return 'otros';
-    return nombre
-        .toLowerCase()
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "")
-        .replace(/[^a-z0-9_-]/g, "_")
-        .replace(/_+/g, "_")
-        .trim();
-};
 
 export const generarImagenesVacias = async () => {
     try {
@@ -29,7 +18,7 @@ export const generarImagenesVacias = async () => {
              JOIN categoria c ON p.id_categoria = c.id_categoria`
         );
 
-        const frontendPublicDir = process.env.FRONTEND_PUBLIC_DIR || path.resolve(process.cwd(), '../yasumi-vite/public');
+        const frontendPublicDir = getFrontendPublicDir();
         let creados = 0;
         let actualizadosBD = 0;
 
@@ -59,9 +48,7 @@ export const generarImagenesVacias = async () => {
                 const dirPath = path.dirname(absolutePath);
 
                 if (!fs.existsSync(absolutePath)) {
-                    if (!fs.existsSync(dirPath)) {
-                        fs.mkdirSync(dirPath, { recursive: true });
-                    }
+                    ensureDir(dirPath);
                     fs.writeFileSync(absolutePath, transparentPngBuffer);
                     console.log(`[Yasumi DB] PNG vacío creado para "${p.nombre}": ${imgUrl}`);
                     creados++;

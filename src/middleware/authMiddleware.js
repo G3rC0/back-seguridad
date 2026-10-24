@@ -1,4 +1,5 @@
 import jwt from 'jsonwebtoken';
+import { mapRolToFrontend } from '../utils/roles';
 
 export const verifyToken = (req, res, next) => {
     const authHeader = req.headers['authorization'];
@@ -19,10 +20,8 @@ export const verifyToken = (req, res, next) => {
 };
 
 export const isAdmin = (req, res, next) => {
-    // Aceptamos rol 'admin' (mapeado en frontend) o 'Administrador' (guardado en BD)
-    if (req.user && (req.user.rol === 'admin' || req.user.rol === 'Administrador')) {
-        next();
-    } else {
-        return res.status(403).json({ error: 'Acceso denegado. Se requieren permisos de Administrador.' });
+    if (mapRolToFrontend(req.user?.rol)==='admin') {
+        return next();
     }
+    return res.status(403).json({ error: 'Acceso denegado. Se requiere permisos de Administrador. '});
 };

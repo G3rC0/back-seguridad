@@ -1,21 +1,7 @@
 import { pool } from '../config/db.js';
 import fs from 'fs';
 import path from 'path';
-
-const getFrontendPublicDir = () => {
-    return process.env.FRONTEND_PUBLIC_DIR || path.resolve(process.cwd(), '../yasumi-vite/public');
-};
-
-const cleanCategoryName = (nombre) => {
-    if (!nombre) return 'otros';
-    return nombre
-        .toLowerCase()
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "")
-        .replace(/[^a-z0-9_-]/g, "_")
-        .replace(/_+/g, "_")
-        .trim();
-};
+import { cleanCategoryName, getFrontendPublicDir, ensureDir } from '../utils/files.js';
 
 const guardarImagenBase64 = async (base64Str, originalName, id_categoria) => {
     try {
@@ -42,9 +28,7 @@ const guardarImagenBase64 = async (base64Str, originalName, id_categoria) => {
         const publicDir   = getFrontendPublicDir();
         const targetDir   = path.join(publicDir, 'productos', catFolder);
 
-        if (!fs.existsSync(targetDir)) {
-            fs.mkdirSync(targetDir, { recursive: true });
-        }
+        ensureDir(targetDir);
 
         const targetPath = path.join(targetDir, filename);
         fs.writeFileSync(targetPath, fileBuffer);

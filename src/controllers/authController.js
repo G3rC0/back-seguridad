@@ -2,8 +2,10 @@ import { pool } from '../config/db.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { JWT_SECRET, JWT_EXPIRES_IN } from '../config/jwt.js';
-import { getClientIp } from '../utils/helpers.js';
 import { evaluarFortaleza } from '../middleware/validatorMiddleware.js';
+import { mapRolToFrontend } from '../utils/roles.js';
+import { registrarAcceso } from '../services/logService.js';
+import { buscarIdPorEmail, crearUsuarioCompleto } from '../services/userService.js';
 
 // Login de usuario
 export const login = async (req, res) => {
@@ -45,14 +47,8 @@ export const login = async (req, res) => {
             return res.status(401).json({ error: 'Usuario o contraseña incorrectos' });
         }
 
-        // 5. Mapear rol de BD a Frontend
-        let rolFrontend = 'vendedor';
-        const dbRol = (user.rol || '').toLowerCase().trim();
-        if (dbRol === 'administrador' || dbRol === 'admin') {
-            rolFrontend = 'admin';
-        } else if (dbRol === 'cliente') {
-            rolFrontend = 'cliente';
-        }
+        //5. Mapear rol de BD a Frontend
+        const rolFrontend = mapRolToFrontend(user.rol);
 
         // 6. Generar token JWT
         const token = jwt.sign(
@@ -67,14 +63,7 @@ export const login = async (req, res) => {
         );
 
         // 7. Registrar LOG de acceso
-        const ipLimpia = getClientIp(req);
-        const browser  = req.headers['user-agent'] || 'Desconocido';
-
-        await pool.query(
-            `INSERT INTO log_acceso (id_usuario, ip_address, evento, browser)
-             VALUES ($1, $2, 'INGRESO', $3)`,
-            [user.id_persona, ipLimpia, browser]
-        );
+        await registrarAcceso(req, user.id_persona, 'INGRESO');
 
         // 8. Actualizar último acceso
         await pool.query(
@@ -101,7 +90,6 @@ export const login = async (req, res) => {
 export const register = async (req, res) => {
     const { nombre, paterno, materno, email, password, rol } = req.body;
 
-    const client = await pool.connect();
     try {
         // 1. Validar fortaleza de contraseña
         const fortaleza = evaluarFortaleza(password);
@@ -109,13 +97,9 @@ export const register = async (req, res) => {
             return res.status(400).json({ error: 'La contraseña es muy débil. Debe tener al menos 6 caracteres con letras y números.' });
         }
 
-        // 2. Verificar si el email ya existe
-        const { rows: existing } = await pool.query(
-            'SELECT id_persona FROM persona WHERE email = $1',
-            [email]
-        );
-        if (existing.length > 0) {
-            return res.status(400).json({ error: 'El correo electrónico ya está registrado' });
+        //2. Verificar si el email ya existe
+        if (await buscarIdPorEmail(email)) {
+            return res.status(400).json({ error: 'El correo ya esta registrado'});
         }
 
         // 3. Encriptar contraseña
@@ -136,47 +120,22 @@ export const register = async (req, res) => {
             }
         }
 
-        // 5. Iniciar transacción
-        await client.query('BEGIN');
-
-        // 6. Insertar en persona y obtener el id generado
-        const { rows: personaRows } = await client.query(
-            `INSERT INTO persona (nombre, paterno, materno, email)
-             VALUES ($1, $2, $3, $4)
-             RETURNING id_persona`,
-            [nombre, paterno || null, materno || null, email]
-        );
-        const idPersona = personaRows[0].id_persona;
-
-        // 7. Insertar en usuario
-        await client.query(
-            `INSERT INTO usuario (id_usuario, id_sucursal, password, rol, activo)
-             VALUES ($1, 1, $2, $3, TRUE)`,
-            [idPersona, passwordHash, rolBD]
-        );
-
-        // 8. Si es registro público (Cliente), también insertar en cliente
-        if (rolBD === 'Cliente') {
-            await client.query(
-                `INSERT INTO cliente (id_cliente, telefono, direccion, fecha_nacimiento, activo)
-                 VALUES ($1, NULL, NULL, NULL, TRUE)`,
-                [idPersona]
-            );
-        }
-
-        await client.query('COMMIT');
+        await crearUsuarioCompleto({
+            nombre,
+            paterno: paterno || null,
+            materno: materno || null,
+            email,
+            passwordHash,
+            rol: rolBD
+        });
 
         res.json({
             ok: true,
-            message: rolBD === 'Cliente' ? 'Registro completado como Cliente' : 'Usuario registrado exitosamente'
+            message: rolBD === 'Cliente' ? 'Registro Completado como cliente' : 'Usuario registrado exitosamente'
         });
-
     } catch (error) {
-        await client.query('ROLLBACK');
-        console.error('Error en registro:', error);
+        console.error('Error en registro: ', error);
         res.status(500).json({ error: 'Error en el servidor al registrar usuario' });
-    } finally {
-        client.release();
     }
 };
 
@@ -187,14 +146,7 @@ export const logout = async (req, res) => {
             return res.status(401).json({ error: 'No autorizado' });
         }
 
-        const ipLimpia = getClientIp(req);
-        const browser  = req.headers['user-agent'] || 'Desconocido';
-
-        await pool.query(
-            `INSERT INTO log_acceso (id_usuario, ip_address, evento, browser)
-             VALUES ($1, $2, 'SALIDA', $3)`,
-            [req.user.id, ipLimpia, browser]
-        );
+        await registrarAcceso(req, req.user.id, 'SALIDA');
 
         res.json({ ok: true, message: 'Salida registrada exitosamente' });
     } catch (error) {
@@ -203,50 +155,18 @@ export const logout = async (req, res) => {
     }
 };
 
-// Obtener o crear el usuario invitado en la BD
+//Obtener o crear el usuario invitado en la BD
 const obtenerOCrearInvitado = async () => {
-    const { rows } = await pool.query(
-        'SELECT id_persona FROM persona WHERE email = $1',
-        ['invitado@yasumi.com']
-    );
+    const idExistente = await buscarIdPorEmail('invitado@yasumi.com');
+    if (idExistente) return idExistente;
 
-    if (rows.length > 0) {
-        return rows[0].id_persona;
-    }
-
-    // No existe — crear todo en una transacción
-    const client = await pool.connect();
-    try {
-        await client.query('BEGIN');
-
-        const { rows: personaRows } = await client.query(
-            `INSERT INTO persona (nombre, paterno, materno, email)
-             VALUES ('Invitado', NULL, NULL, 'invitado@yasumi.com')
-             RETURNING id_persona`
-        );
-        const idInvitado = personaRows[0].id_persona;
-
-        const dummyPassword = await bcrypt.hash('invitado_password_2026', 10);
-        await client.query(
-            `INSERT INTO usuario (id_usuario, id_sucursal, password, rol, activo)
-             VALUES ($1, 1, $2, 'Cliente', TRUE)`,
-            [idInvitado, dummyPassword]
-        );
-
-        await client.query(
-            `INSERT INTO cliente (id_cliente, telefono, direccion, fecha_nacimiento, activo)
-             VALUES ($1, NULL, NULL, NULL, TRUE)`,
-            [idInvitado]
-        );
-
-        await client.query('COMMIT');
-        return idInvitado;
-    } catch (err) {
-        await client.query('ROLLBACK');
-        throw err;
-    } finally {
-        client.release();
-    }
+    // no existe: crear persona + usuario + cliente
+    return crearUsuarioCompleto({
+        nombre: 'Invintado',
+        email: 'invitado@yasumi.com',
+        passwordHash: await bcrypt.hash('invitado_password_2026', 10),
+        rol: 'Cliente'
+    });
 };
 
 // Login como invitado
@@ -254,15 +174,8 @@ export const loginInvitado = async (req, res) => {
     try {
         const idInvitado = await obtenerOCrearInvitado();
 
-        const ipLimpia = getClientIp(req);
-        const browser  = req.headers['user-agent'] || 'Desconocido';
-
-        await pool.query(
-            `INSERT INTO log_acceso (id_usuario, ip_address, evento, browser)
-             VALUES ($1, $2, 'INGRESO', $3)`,
-            [idInvitado, ipLimpia, browser]
-        );
-
+        await registrarAcceso(req, idInvitado, 'INGRESO');
+        
         const token = jwt.sign(
             { id: idInvitado, nombre: 'Invitado', email: 'invitado@yasumi.com', rol: 'invitado' },
             JWT_SECRET,

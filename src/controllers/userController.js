@@ -1,4 +1,5 @@
 import { pool } from '../config/db.js';
+import { mapRolToFrontend } from '../utils/roles.js';
 
 export const getUsuarios = async (req, res) => {
     try {
@@ -11,13 +12,7 @@ export const getUsuarios = async (req, res) => {
         );
 
         const usuarios = rows.map(u => {
-            let rolFrontend = 'vendedor';
-            const dbRol = (u.rol || '').toLowerCase().trim();
-            if (dbRol === 'administrador' || dbRol === 'admin') {
-                rolFrontend = 'admin';
-            } else if (dbRol === 'cliente') {
-                rolFrontend = 'cliente';
-            }
+            const rolFrontend = mapRolToFrontend(u.rol);
 
             return {
                 id:           u.id,
