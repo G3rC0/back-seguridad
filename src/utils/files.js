@@ -3,12 +3,12 @@ import path from 'path';
 
 //carpeta /public del frontend donde se guardan las imagenes
 export const getFrontendPublicDir = () => 
-    process.env.FRONTEND_PUBLIC_DIR || path.resolve(process.cwd(), '../yassumi-vite/public');
+    process.env.FRONTEND_PUBLIC_DIR || path.resolve(process.cwd(), '../yasumi-vite/public');
 
 //crea la carpeta ( y las intermedias) solo si no existe
 export const ensureDir = (dirPath) => {
     if(!fs.existsSync(dirPath)) {
-        fs.mkdirSync(dirPath, { recursve: true});
+        fs.mkdirSync(dirPath, { recursive: true});
     }
 };
 

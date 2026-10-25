@@ -99,7 +99,7 @@ export const crearProducto = async (req, res) => {
 
         const { rows } = await pool.query(
             `INSERT INTO producto (nombre, descripcion, id_categoria, tipo, imagen_url, precio, stock_disponible, stock_minimo, activo)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8 TRUE)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, TRUE)
             RETURNING id_producto`,
             valores
         );
@@ -127,9 +127,9 @@ export const editarProducto = async (req,res) => {
             WHERE id_producto = $9`,
             [...valores, req.params.id]
         );
-        res.json({ ok:true, message: 'Producto actualizado exitosamnete'});
+        res.json({ ok:true, message: 'Producto actualizado exitosamente'});
     }catch (error) {
-        console.error('Error al editar poducto: ', error);
+        console.error('Error al editar producto: ', error);
         res.status(500).json({ error: 'Error al editar producto en el servidor' });
     }
 }
@@ -142,7 +142,7 @@ const setProductoActivo = (activo) => async (req, res) => {
         ' UPDATE producto SET activo= $1 WHERE id_producto = $2',
         [activo, req.params.id]
         );
-        res.json({ ok: true, message: `Productp ${activo ? 'reactivado' : 'desactivado'} exitosamente`})
+        res.json({ ok: true, message: `Producto ${activo ? 'reactivado' : 'desactivado'} exitosamente`})
     }catch ( error) {
         console.error(`Error al ${accion} producto: `, error);
         res.status(500).json({ error: `Error al ${accion} producto en el servidor`});

@@ -18,7 +18,7 @@ export const getAccessLogs = manejarErrores(
             ip: l.ip || '127.0.0.1',
             evento: l.evento,
             browser: l.browser || 'Desconocido',
-            fechaHora: new Date(l.fecha_hora).toLocaleDateString('es-BO')
+            fechaHora: new Date(l.fecha_hora).toLocaleString('es-BO')
         }));
 
         res.json(logs);
