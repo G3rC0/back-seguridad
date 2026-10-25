@@ -19,7 +19,7 @@ export const crearUsuarioCompleto = ({ nombre, paterno = null, materno = null, e
         const  idPersona = rows[0].id_persona;
 
         await client.query(
-            'INSERT INTO usuario (id_usuario, id_sucursal, password, rol, activo) VALUES ($1, 1 $2, $3, TRUE)',
+            'INSERT INTO usuario (id_usuario, id_sucursal, password, rol, activo) VALUES ($1, 1, $2, $3, TRUE)',
             [idPersona, passwordHash, rol]
         );
 

@@ -49,7 +49,7 @@ const valoresProducto = async (body) => [
     body.nombre,
     body.descripcion || null,
     body.id_categoria,
-    body.tipo || 'estandar',
+    body.tipo || 'Estándar',
     await resolverImagen(body),
     body.precio,
     body.stock ?? 0,
@@ -98,8 +98,8 @@ export const crearProducto = async (req, res) => {
         const valores = await valoresProducto(req.body);
 
         const { rows } = await pool.query(
-            `INSERT INTO producto (nombre, descripcion, id_categoria, tipo, imagen_url, stock_disponible, stock_minimo, activo)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, TRUE)
+            `INSERT INTO producto (nombre, descripcion, id_categoria, tipo, imagen_url, precio, stock_disponible, stock_minimo, activo)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8 TRUE)
             RETURNING id_producto`,
             valores
         );
@@ -122,7 +122,7 @@ export const editarProducto = async (req,res) => {
 
         await pool.query(
             `UPDATE producto
-            SET nommbre = $1, descripcion = $2, id_categoria = $3, tipo = $4,
+            SET nombre = $1, descripcion = $2, id_categoria = $3, tipo = $4,
             imagen_url = $5, precio = $6, stock_disponible = $7, stock_minimo = $8
             WHERE id_producto = $9`,
             [...valores, req.params.id]
@@ -131,7 +131,7 @@ export const editarProducto = async (req,res) => {
     }catch (error) {
         console.error('Error al editar poducto: ', error);
         res.status(500).json({ error: 'Error al editar producto en el servidor' });
-    };
+    }
 }
 
 const setProductoActivo = (activo) => async (req, res) => {
@@ -150,4 +150,4 @@ const setProductoActivo = (activo) => async (req, res) => {
 };
 
 export const eliminarProducto = setProductoActivo(false);
-export const reactivarProduo = setProductoActivo(true);
+export const reactivarProducto = setProductoActivo(true);

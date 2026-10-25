@@ -163,7 +163,7 @@ const obtenerOCrearInvitado = async () => {
 
     // no existe: crear persona + usuario + cliente
     return crearUsuarioCompleto({
-        nombre: 'Invintado',
+        nombre: 'Invitado',
         email: 'invitado@yasumi.com',
         passwordHash: await bcrypt.hash('invitado_password_2026', 10),
         rol: 'Cliente'

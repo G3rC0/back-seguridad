@@ -7,7 +7,7 @@ import { verifyToken } from '../middleware/authMiddleware.js';
 const router = Router();
 
 router.post('/login', loginRules, validate, login);
-router.post('/register', registroRules, validate, register);
+router.post('/registro', registroRules, validate, register);
 
 router.post('/invitado', loginInvitado);
 router.post('/logout', verifyToken, logout);

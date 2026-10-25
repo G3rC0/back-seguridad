@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { validate } from '../middleware/validatorMiddleware.js';
-import { productoRules } from '../validators/productValidators'
+import { productoRules } from '../validators/productValidators.js'
 import { getProductos, crearProducto, editarProducto, eliminarProducto, reactivarProducto } from '../controllers/productController.js';
 import { verifyToken, isAdmin } from '../middleware/authMiddleware.js';
 import { generarImagenesVacias } from '../utils/imageGenerator.js';
@@ -21,7 +21,7 @@ router.get('/sync-images', verifyToken, isAdmin, async (req, res) => {
 });
 
 // Endpoints protegidos para administración de productos
-router.post('/', verifyToken, isAdmin, productoRules, validate, editarProducto);
+router.post('/', verifyToken, isAdmin, productoRules, validate, crearProducto);
 
 router.put('/:id', verifyToken, isAdmin, productoRules, validate, editarProducto);
 

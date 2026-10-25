@@ -39,8 +39,6 @@ app.get('/ping', async (req, res) => {
 });
 
 // Inicialización del servidor
-
-
 const PORT = process.env.PORT || 3002;
 app.listen(PORT, '0.0.0.0', async () => {
     console.log(`[Yasumi Backend] Servidor activo en http://localhost:${PORT}`);

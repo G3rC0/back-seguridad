@@ -12,7 +12,7 @@ export const nombreCompleto = ({ nombre, paterno, materno } = {}) =>
 [nombre, paterno, materno].filter(Boolean).join(' ');
 
 // Envuelve un controlador async: si falla, lo registra y responde 500 con `mensaje`
-export const manejarErrores = (mensaje, handler) => (req, res) => {
+export const manejarErrores = (mensaje, handler) => async (req, res) => {
     try{
         await handler(req, res);
     } catch (error) {

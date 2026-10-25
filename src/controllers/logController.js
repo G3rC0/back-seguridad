@@ -1,5 +1,5 @@
-import { pool } from "../config/db";
-import { nombreCompleto, manejarErrores } from "../utils/helpers";
+import { pool } from "../config/db.js";
+import { nombreCompleto, manejarErrores } from "../utils/helpers.js";
 
 export const getAccessLogs = manejarErrores(
     'Error al obtener logs de acceso del servidor',
@@ -18,7 +18,7 @@ export const getAccessLogs = manejarErrores(
             ip: l.ip || '127.0.0.1',
             evento: l.evento,
             browser: l.browser || 'Desconocido',
-            fechaHora: new Date(l.fecha_hora).toLocaleDateString('es_BO')
+            fechaHora: new Date(l.fecha_hora).toLocaleDateString('es-BO')
         }));
 
         res.json(logs);
