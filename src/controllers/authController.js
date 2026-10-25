@@ -6,6 +6,7 @@ import { evaluarFortaleza } from '../middleware/validatorMiddleware.js';
 import { mapRolToFrontend } from '../utils/roles.js';
 import { registrarAcceso } from '../services/logService.js';
 import { buscarIdPorEmail, crearUsuarioCompleto } from '../services/userService.js';
+import { nombreCompleto } from '../utils/helpers.js';
 
 // Login de usuario
 export const login = async (req, res) => {
@@ -49,12 +50,12 @@ export const login = async (req, res) => {
 
         //5. Mapear rol de BD a Frontend
         const rolFrontend = mapRolToFrontend(user.rol);
-
+        const nombre = nombreCompleto(user);
         // 6. Generar token JWT
         const token = jwt.sign(
             {
                 id:     user.id_persona,
-                nombre: `${user.nombre} ${user.paterno || ''}`.trim(),
+                nombre,
                 email:  user.email,
                 rol:    rolFrontend
             },
@@ -75,7 +76,7 @@ export const login = async (req, res) => {
             ok: true,
             token,
             usuario: {
-                nombre: `${user.nombre} ${user.paterno || ''}`.trim(),
+                nombre,
                 rol:    rolFrontend
             }
         });

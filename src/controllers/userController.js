@@ -1,8 +1,10 @@
 import { pool } from '../config/db.js';
 import { mapRolToFrontend } from '../utils/roles.js';
+import { nombreCompleto, manejarErrores } from '../utils/helpers.js';
 
-export const getUsuarios = async (req, res) => {
-    try {
+export const getUsuarios = manejarErrores(
+    'Error al obtener usuarios del servidor',
+    async (req, res) => {
         const { rows } = await pool.query(
             `SELECT p.id_persona AS id, p.nombre, p.paterno, p.materno, p.email,
                     u.id_sucursal, u.rol, u.activo, u.fecha_creacion, u.ultimo_acceso
@@ -11,35 +13,29 @@ export const getUsuarios = async (req, res) => {
              ORDER BY p.id_persona DESC`
         );
 
-        const usuarios = rows.map(u => {
-            const rolFrontend = mapRolToFrontend(u.rol);
-
-            return {
-                id:           u.id,
-                nombre:       `${u.nombre} ${u.paterno || ''} ${u.materno || ''}`.trim(),
-                primerNombre: u.nombre,
-                paterno:      u.paterno,
-                materno:      u.materno,
-                email:        u.email,
-                rol:          rolFrontend,
-                id_sucursal:  u.id_sucursal,
-                activo:       u.activo,
-                fechaCreacion: new Date(u.fecha_creacion).toLocaleDateString('es-BO'),
-                ultimoAcceso:  u.ultimo_acceso ? new Date(u.ultimo_acceso).toLocaleString('es-BO') : null
-            };
-        });
+        const usuarios = rows.map(u => ({
+            id:            u.id,
+            nombre:        nombreCompleto(u),
+            primerNombre:  u.nombre,
+            paterno:       u.paterno,
+            materno:       u.materno,
+            email:         u.email,
+            rol:           mapRolToFrontend(u.rol),
+            id_sucursal:   u.id_sucursal,
+            activo:        u.activo,
+            fechaCreacion: new Date(u.fecha_creacion).toLocaleDateString('es-BO'),
+            ultimoAcceso:  u.ultimo_acceso ? new Date(u.ultimo_acceso).toLocaleString('es-BO') : null
+        }));
 
         res.json(usuarios);
-    } catch (error) {
-        console.error('Error al obtener usuarios:', error);
-        res.status(500).json({ error: 'Error al obtener usuarios del servidor' });
     }
-};
+);
 
-export const toggleActivo = async (req, res) => {
-    const { id } = req.params;
+export const toggleActivo = manejarErrores(
+    'Error al cambiar estado de usuario en el servidor',
+    async (req, res) => {
+        const { id } = req.params;
 
-    try {
         const { rows } = await pool.query(
             'SELECT activo FROM usuario WHERE id_usuario = $1',
             [id]
@@ -62,8 +58,5 @@ export const toggleActivo = async (req, res) => {
             message: `Usuario ${nuevoEstado ? 'activado' : 'desactivado'} exitosamente`,
             activo:  nuevoEstado
         });
-    } catch (error) {
-        console.error('Error al cambiar estado de usuario:', error);
-        res.status(500).json({ error: 'Error al cambiar estado de usuario en el servidor' });
     }
-};
+);

@@ -11,7 +11,7 @@ const router = Router();
 router.get('/', getProductos);
 
 // Endpoint temporal para forzar la sincronización de imágenes
-router.get('/sync-images', async (req, res) => {
+router.get('/sync-images', verifyToken, isAdmin, async (req, res) => {
     try {
         await generarImagenesVacias();
         res.json({ ok: true, message: 'Imágenes sincronizadas con éxito' });

@@ -1,6 +1,6 @@
+import './src/config/env.js';
 import express from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
 import { pool } from './src/config/db.js';
 
 // Importación de rutas
@@ -11,7 +11,6 @@ import categoryRoutes from './src/routes/categoryRoutes.js';
 import userRoutes from './src/routes/userRoutes.js';
 import logRoutes from './src/routes/logRoutes.js';
 
-dotenv.config();
 
 const app = express();
 

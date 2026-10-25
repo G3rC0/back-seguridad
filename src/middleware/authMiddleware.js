@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken';
-import { mapRolToFrontend } from '../utils/roles';
+import { mapRolToFrontend } from '../utils/roles.js';
+import { JWT_SECRET } from '../config/jwt.js';
 
 export const verifyToken = (req, res, next) => {
     const authHeader = req.headers['authorization'];
@@ -10,8 +11,7 @@ export const verifyToken = (req, res, next) => {
     }
 
     try {
-        const secret = process.env.JWT_SECRET || 'yasumi_secret_token_key_2026';
-        const decoded = jwt.verify(token, secret);
+        const decoded = jwt.verify(token, JWT_SECRET);
         req.user = decoded; 
         next();
     } catch (error) {
